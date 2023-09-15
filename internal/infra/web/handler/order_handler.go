@@ -1,31 +1,25 @@
-package web
+package handler
 
 import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/go-chi/chi"
 	"github.com/renan5g/go-clean-arch/internal/application/usecase"
 )
 
 type WebOrderHandler struct {
-	CreateOrder usecase.CreateOrderUseCase
-	ListOrder   usecase.ListOrderUseCase
+	CreateOrderUseCase usecase.CreateOrderUseCase
+	ListOrdersUseCase  usecase.ListOrdersUseCase
 }
 
 func NewWebOrderHandler(
-	r chi.Router,
-	createOrder usecase.CreateOrderUseCase,
-	listOrder usecase.ListOrderUseCase,
+	createOrderUseCase usecase.CreateOrderUseCase,
+	listOrdersUseCase usecase.ListOrdersUseCase,
 ) *WebOrderHandler {
-	handler := &WebOrderHandler{
-		CreateOrder: createOrder,
-		ListOrder:   listOrder,
+	return &WebOrderHandler{
+		CreateOrderUseCase: createOrderUseCase,
+		ListOrdersUseCase:  listOrdersUseCase,
 	}
-
-	r.Post("/orders", handler.Create)
-	r.Get("/orders", handler.List)
-	return handler
 }
 
 func (h *WebOrderHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +30,7 @@ func (h *WebOrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	output, err := h.CreateOrder.Execute(&dto)
+	output, err := h.CreateOrderUseCase.Execute(&dto)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -52,7 +46,7 @@ func (h *WebOrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WebOrderHandler) List(w http.ResponseWriter, r *http.Request) {
-	output, err := h.ListOrder.Execute()
+	output, err := h.ListOrdersUseCase.Execute()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

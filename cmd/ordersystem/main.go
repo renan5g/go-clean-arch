@@ -1,21 +1,21 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"net"
 	"net/http"
 
 	graphql_handler "github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
 	"github.com/renan5g/go-clean-arch/config"
 	"github.com/renan5g/go-clean-arch/internal/domain/event/handler"
-	"github.com/renan5g/go-clean-arch/internal/infra/factory"
+	"github.com/renan5g/go-clean-arch/internal/infra/database"
 	"github.com/renan5g/go-clean-arch/internal/infra/graph"
 	"github.com/renan5g/go-clean-arch/internal/infra/grpc/pb"
 	"github.com/renan5g/go-clean-arch/internal/infra/grpc/service"
+	"github.com/renan5g/go-clean-arch/internal/infra/web"
+	web_handler "github.com/renan5g/go-clean-arch/internal/infra/web/handler"
+
 	"github.com/renan5g/go-clean-arch/pkg/events"
 	"github.com/renan5g/go-clean-arch/pkg/rabbitmq"
 	"google.golang.org/grpc"
@@ -25,36 +25,25 @@ import (
 )
 
 func main() {
-	configs, err := config.LoadConfig(".")
-	if err != nil {
-		panic(err)
-	}
+	configs := config.LoadConfig(".")
 
-	db, err := sql.Open(configs.DBDriver, fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", configs.DBUser, configs.DBPassword, configs.DBHost, configs.DBPort, configs.DBName))
-	if err != nil {
-		panic(err)
-	}
+	db := database.Open(configs)
 	defer db.Close()
 
-	rabbitMQChannel, err := rabbitmq.OpenChannel()
-	if err != nil {
-		panic(err)
-	}
+	rabbitMQChannel := rabbitmq.OpenChannel()
 
 	eventDispatcher := events.NewEventDispatcher()
-	eventDispatcher.Register("OrderCreated", &handler.OrderCreatedHandler{
-		RabbitMQChannel: rabbitMQChannel,
-	})
+	eventDispatcher.Register("OrderCreated", &handler.OrderCreatedHandler{RabbitMQChannel: rabbitMQChannel})
 
-	r := chi.NewRouter()
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	factory.MakeWebOrderHandle(db, r, eventDispatcher)
+	createOrderUseCase := MakeCreateOrderUseCase(db, eventDispatcher)
+	listOrderUseCase := MakeListOrdersUseCase(db)
+
+	webserver := web.NewWebServer(configs.WebServerPort)
+	webserver.SetupMiddleware()
+	webOrderHandler := web_handler.NewWebOrderHandler(*createOrderUseCase, *listOrderUseCase)
+	webserver.SetupRoutes(*webOrderHandler)
 	fmt.Println("Starting Web server on port", configs.WebServerPort)
-	go http.ListenAndServe(fmt.Sprintf(":%s", configs.WebServerPort), r)
-
-	createOrderUseCase := factory.MakeCreateOrderUseCase(db, eventDispatcher)
-	listOrderUseCase := factory.MakeListOrdersUseCase(db)
+	go webserver.Start()
 
 	grpcServer := grpc.NewServer()
 	orderService := service.NewOrderService(*createOrderUseCase, *listOrderUseCase)

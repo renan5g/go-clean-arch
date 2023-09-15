@@ -10,16 +10,16 @@ import (
 type OrderService struct {
 	pb.UnimplementedOrderServiceServer
 	CreateOrderUseCase usecase.CreateOrderUseCase
-	ListOrderUseCase   usecase.ListOrderUseCase
+	ListOrdersUseCase  usecase.ListOrdersUseCase
 }
 
 func NewOrderService(
 	createOrderUseCase usecase.CreateOrderUseCase,
-	listOrderUseCase usecase.ListOrderUseCase,
+	ListOrdersUseCase usecase.ListOrdersUseCase,
 ) *OrderService {
 	return &OrderService{
 		CreateOrderUseCase: createOrderUseCase,
-		ListOrderUseCase:   listOrderUseCase,
+		ListOrdersUseCase:  ListOrdersUseCase,
 	}
 }
 
@@ -41,7 +41,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *pb.CreateOrderReques
 }
 
 func (s *OrderService) ListOrders(ctx context.Context, in *pb.Black) (*pb.OrderList, error) {
-	orders, err := s.ListOrderUseCase.Execute()
+	orders, err := s.ListOrdersUseCase.Execute()
 	if err != nil {
 		return nil, err
 	}

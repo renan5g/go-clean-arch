@@ -11,15 +11,15 @@ type OrderListOutputDTO struct {
 	FinalPrice float64 `json:"final_price"`
 }
 
-type ListOrderUseCase struct {
+type ListOrdersUseCase struct {
 	OrderRepo repository.OrderRepositoryInterface
 }
 
-func NewListOrderUseCase(repo repository.OrderRepositoryInterface) *ListOrderUseCase {
-	return &ListOrderUseCase{OrderRepo: repo}
+func NewListOrdersUseCase(repo repository.OrderRepositoryInterface) *ListOrdersUseCase {
+	return &ListOrdersUseCase{OrderRepo: repo}
 }
 
-func (uc *ListOrderUseCase) Execute() ([]*OrderListOutputDTO, error) {
+func (uc *ListOrdersUseCase) Execute() ([]*OrderListOutputDTO, error) {
 	orders, err := uc.OrderRepo.List()
 	if err != nil {
 		return nil, err
